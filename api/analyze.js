@@ -82,8 +82,11 @@ module.exports = async function handler(req, res) {
                 }
             } catch (ocrError) {
                 console.error('OCR failed:', ocrError);
+                console.error('OCR error details:', ocrError.message);
+
+                // Return more detailed error message
                 return res.status(400).json({
-                    error: 'Could not extract text from PDF. The file may be corrupted or password-protected. Please try a different PDF or copy-paste your resume text.',
+                    error: `Could not extract text from PDF using OCR. Error: ${ocrError.message || 'Unknown error'}. Please try a text-based PDF or copy-paste your resume text.`,
                 });
             }
         }
