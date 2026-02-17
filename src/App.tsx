@@ -29,7 +29,7 @@ function App() {
       formData.append('resume', resumeFile);
       formData.append('jobDescription', jobDescription);
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+      const apiUrl = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${apiUrl}/api/analyze`, {
         method: 'POST',
         body: formData,
