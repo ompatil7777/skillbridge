@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const multer = require('multer');
+const { extractPages } = require('unpdf');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -57,18 +58,36 @@ module.exports = async function handler(req, res) {
         if (!resumeText.trim()) {
             try {
                 console.log('Attempting OCR with Gemini Vision API...');
+                console.log('Extracting first page of PDF as image...');
+
+                // Extract first page of PDF as PNG image using unpdf
+                const pages = await extractPages(resumeFile.buffer, [0]); // Extract only first page
+
+                if (!pages || pages.length === 0) {
+                    throw new Error('Could not extract pages from PDF');
+                }
+
+                const firstPage = pages[0];
+                console.log('Page extracted successfully, rendering to PNG...');
+
+                // Render the page to PNG
+                const pngImage = await firstPage.render({
+                    type: 'png',
+                    width: 1200 // High resolution for better OCR
+                });
+
+                // Convert PNG buffer to base64
+                const base64Data = pngImage.toString('base64');
+                console.log('Image converted to base64, sending to Gemini Vision...');
+
                 const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-                // Convert PDF buffer to base64
-                const base64Data = resumeFile.buffer.toString('base64');
-
-                const visionPrompt = "Extract all text from this resume PDF image. Return only the extracted text, preserving the structure and formatting as much as possible.";
+                const visionPrompt = "Extract all text from this resume image. Return only the extracted text, preserving the structure and formatting as much as possible.";
 
                 const result = await visionModel.generateContent([
                     visionPrompt,
                     {
                         inlineData: {
-                            mimeType: resumeFile.mimetype,
+                            mimeType: 'image/png',
                             data: base64Data
                         }
                     }
