@@ -1,17 +1,11 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import pdf from 'pdf-parse';
-import multer from 'multer';
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const pdf = require('pdf-parse');
+const multer = require('multer');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
-export const config = {
-    api: {
-        bodyParser: false,
-    },
-};
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
     // Enable CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -114,7 +108,7 @@ export default async function handler(req, res) {
   "topRecommendation": "single most impactful action the candidate should take"
 }`;
 
-        const userPrompt = `Resume:\n${resumeText}\n\nJob Description:\n${jobDescription}`;
+        const userPrompt = `Resume:\\n${resumeText}\\n\\nJob Description:\\n${jobDescription}`;
 
         let analysis;
         let retryCount = 0;
@@ -128,7 +122,7 @@ export default async function handler(req, res) {
                 let responseText = response.text();
 
                 // Clean up markdown code blocks if Gemini includes them
-                responseText = responseText.replace(/```json\n?|\n?```/g, '').trim();
+                responseText = responseText.replace(/```json\\n?|\\n?```/g, '').trim();
 
                 console.log('AI Response:', responseText);
                 analysis = JSON.parse(responseText);
@@ -177,4 +171,4 @@ export default async function handler(req, res) {
             error: 'An error occurred during analysis. Please try again.',
         });
     }
-}
+};
