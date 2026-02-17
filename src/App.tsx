@@ -35,7 +35,14 @@ function App() {
         body: formData,
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // If response is not JSON, get the text to see the actual error
+        const text = await response.text();
+        throw new Error(`Server error: ${text.substring(0, 200)}`);
+      }
 
       if (!response.ok) {
         throw new Error(data.error || 'Analysis failed');
