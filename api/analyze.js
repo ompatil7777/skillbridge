@@ -1,7 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const pdf = require('pdf-parse');
 const multer = require('multer');
-const { extractPages } = require('unpdf');
+const { renderPageAsImage } = require('unpdf');
 
 const upload = multer({ storage: multer.memoryStorage() });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -58,26 +58,22 @@ module.exports = async function handler(req, res) {
         if (!resumeText.trim()) {
             try {
                 console.log('Attempting OCR with Gemini Vision API...');
-                console.log('Extracting first page of PDF as image...');
+                console.log('Rendering first page of PDF as PNG image...');
 
-                // Extract first page of PDF as PNG image using unpdf
-                const pages = await extractPages(resumeFile.buffer, [0]); // Extract only first page
+                // Render first page of PDF as PNG using unpdf
+                const pngBuffer = await renderPageAsImage(
+                    new Uint8Array(resumeFile.buffer),
+                    1, // Page number (1-indexed)
+                    {
+                        canvasImport: () => import('@napi-rs/canvas'),
+                        scale: 2.0, // Higher resolution for better OCR
+                    }
+                );
 
-                if (!pages || pages.length === 0) {
-                    throw new Error('Could not extract pages from PDF');
-                }
-
-                const firstPage = pages[0];
-                console.log('Page extracted successfully, rendering to PNG...');
-
-                // Render the page to PNG
-                const pngImage = await firstPage.render({
-                    type: 'png',
-                    width: 1200 // High resolution for better OCR
-                });
+                console.log('Page rendered successfully, converting to base64...');
 
                 // Convert PNG buffer to base64
-                const base64Data = pngImage.toString('base64');
+                const base64Data = Buffer.from(pngBuffer).toString('base64');
                 console.log('Image converted to base64, sending to Gemini Vision...');
 
                 const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
