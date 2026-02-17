@@ -122,7 +122,7 @@ module.exports = async function handler(req, res) {
                 let responseText = response.text();
 
                 // Clean up markdown code blocks if Gemini includes them
-                responseText = responseText.replace(/```json\\n?|\\n?```/g, '').trim();
+                responseText = responseText.replace(/```(?:json\n)?|```/g, '').trim();
 
                 console.log('AI Response:', responseText);
                 analysis = JSON.parse(responseText);
