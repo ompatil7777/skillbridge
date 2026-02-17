@@ -56,14 +56,47 @@ export default async function handler(req, res) {
             const pdfData = await pdf(resumeFile.buffer);
             resumeText = pdfData.text;
         } catch (pdfError) {
-            return res.status(400).json({
-                error: 'Could not read PDF — try copy-pasting your resume text instead.',
-            });
+            console.log('PDF text extraction failed, attempting OCR with Gemini Vision...');
+        }
+
+        // If text extraction failed or PDF appears to be image-based, use Gemini Vision for OCR
+        if (!resumeText.trim()) {
+            try {
+                console.log('Attempting OCR with Gemini Vision API...');
+                const visionModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+                // Convert PDF buffer to base64
+                const base64Data = resumeFile.buffer.toString('base64');
+
+                const visionPrompt = "Extract all text from this resume PDF image. Return only the extracted text, preserving the structure and formatting as much as possible.";
+
+                const result = await visionModel.generateContent([
+                    visionPrompt,
+                    {
+                        inlineData: {
+                            mimeType: resumeFile.mimetype,
+                            data: base64Data
+                        }
+                    }
+                ]);
+
+                const response = await result.response;
+                resumeText = response.text();
+
+                if (resumeText.trim()) {
+                    console.log('OCR successful! Extracted text from image-based PDF.');
+                }
+            } catch (ocrError) {
+                console.error('OCR failed:', ocrError);
+                return res.status(400).json({
+                    error: 'Could not extract text from PDF. The file may be corrupted or password-protected. Please try a different PDF or copy-paste your resume text.',
+                });
+            }
         }
 
         if (!resumeText.trim()) {
             return res.status(400).json({
-                error: 'PDF appears to be empty. Please upload a valid resume.',
+                error: 'PDF appears to be empty or unreadable. Please upload a valid resume or try copy-pasting the text.',
             });
         }
 
